@@ -1,50 +1,58 @@
 #!/bin/bash
-#    Copyright 2015 Google, Inc.
+# Copyright 2015 Google, Inc.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#        http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.set -x -e
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.set -x -e
+
+# This init script installs Apache Zeppelin on the master node of a Cloud
+# Dataproc cluster. Zeppelin is also configured based on the size of your
+# cluster and the versions of Spark/Hadoop which are installed.
 set -x -e
 
+# Get executor memory value
 EXECUTOR_MEMORY="$(grep spark.executor.memory /etc/spark/conf/spark-defaults.conf | awk '{print $2}')"
-SPARK_VERSION="1.5.0"
-HADOOP_VERSION="2.7.1"
+
+# Set these Spark and Hadoop versions based on your Dataproc version
+SPARK_VERSION="1.6.0"
+HADOOP_VERSION="2.7.2"
 
 # Only run on the master node
 ROLE="$(/usr/share/google/get_metadata_value attributes/dataproc-role)"
 if [[ "${ROLE}" == 'Master' ]]; then
+	
+  # Install Maven 3
+  mkdir -p /tmp/maven
+  cd /tmp/maven
+  wget "ftp://mirror.reverse.net/pub/apache/maven/maven-3/3.3.3/binaries/apache-maven-3.3.3-bin.tar.gz" -P /tmp/
+  tar -xf /tmp/apache-maven-3.3.3-bin.tar.gz -C /usr/lib/
+  ln -s /usr/lib/apache-maven-3.3.3 /usr/lib/apache-maven
+  ln -s /usr/lib/apache-maven/bin/mvn /usr/bin/mvn
 
-        # Install Maven 3
-        mkdir -p /tmp/maven
-        cd /tmp/maven
-        wget "ftp://mirror.reverse.net/pub/apache/maven/maven-3/3.3.3/binaries/apache-maven-3.3.3-bin.tar.gz" -P /tmp/
-        tar -xf /tmp/apache-maven-3.3.3-bin.tar.gz -C /usr/lib/
-        ln -s /usr/lib/apache-maven-3.3.3 /usr/lib/apache-maven
-        ln -s /usr/lib/apache-maven/bin/mvn /usr/bin/mvn
+  # Install dependencies
+  apt-get install -y git vim emacs nodejs npm
+  ln -s /usr/bin/nodejs /usr/bin/node
+  npm update -g npm
+  npm install -g grunt-cli
+  npm install -g grunt
+  npm install -g bower
 
-        # Install dependencies
-        sudo apt-get install -y git vim emacs nodejs npm
-        sudo ln -s /usr/bin/nodejs /usr/bin/node
-        sudo npm update -g npm
-        sudo npm install -g grunt-cli
-        sudo npm install -g grunt
-        sudo npm install -g bower
-
-        # Install zeppelin
-        cd /usr/lib/
-        git clone https://github.com/apache/incubator-zeppelin.git
-        cd incubator-zeppelin
-        mvn clean install -DskipTests "-Dspark.version=$SPARK_VERSION" "-Dhadoop.version=$HADOOP_VERSION" -Pyarn -Phadoop-2.6 -Pspark-1.5 -Ppyspark
-        mkdir -p logs run conf
-        cat > conf/zeppelin-env.sh <<EOF
+  # Install zeppelin
+  cd /usr/lib/
+  git clone https://github.com/apache/incubator-zeppelin.git
+  cd incubator-zeppelin
+  # Even with Hadoop 2.7, -Phadoop-2.6 should be used.
+  mvn clean install -DskipTests "-Dspark.version=$SPARK_VERSION" "-Dhadoop.version=$HADOOP_VERSION" -Pyarn -Phadoop-2.6 -Pspark-1.6 -Ppyspark
+  mkdir -p logs run conf
+  cat > conf/zeppelin-env.sh <<EOF
 #!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -64,7 +72,7 @@ if [[ "${ROLE}" == 'Master' ]]; then
 #
 
 export MASTER="yarn-client" # Spark master url. eg. spark://master_addr:7077. Leave empty if you want to use local mode.
-export ZEPPELIN_JAVA_OPTS="-Dhdp.version=2.7.1" # Additional jvm options. for example, export ZEPPELIN_JAVA_OPTS="-Dspark.executor.memory=8g -Dspark.cores.max=16"
+export ZEPPELIN_JAVA_OPTS="-Dhdp.version=2.7.2" # Additional jvm options. for example, export ZEPPELIN_JAVA_OPTS="-Dspark.executor.memory=8g -Dspark.cores.max=16"
 export ZEPPELIN_MEM=" "  # Zeppelin jvm mem options Default -Xmx1024m -XX:MaxPermSize=512m
 
 
@@ -97,16 +105,17 @@ export PYTHONPATH="/usr/bin/python"
 
 EOF
 
-        cp /etc/hive/conf/hive-site.xml conf/
-        chmod -R a+w conf logs run
+  cp /etc/hive/conf/hive-site.xml conf/
+  chmod -R a+w conf logs run
 
-        # Let Zeppelin create the conf/interpreter.json file
-        /usr/lib/incubator-zeppelin/bin/zeppelin-daemon.sh start
-        /usr/lib/incubator-zeppelin/bin/zeppelin-daemon.sh stop
+  # Let Zeppelin create the conf/interpreter.json file
+  /usr/lib/incubator-zeppelin/bin/zeppelin-daemon.sh start
+  sleep 20s
+  /usr/lib/incubator-zeppelin/bin/zeppelin-daemon.sh stop
 
-        # Force the spark.executor.memory to be inherited from the environment
-        sed -i 's/"spark.executor.memory": "512m",/"spark.executor.memory": "",/' /usr/lib/incubator-zeppelin/conf/interpreter.json
-        /usr/lib/incubator-zeppelin/bin/zeppelin-daemon.sh start
+  # Force the spark.executor.memory to be inherited from the environment
+  sed -i 's/"spark.executor.memory": "512m",/"spark.executor.memory": "",/' /usr/lib/incubator-zeppelin/conf/interpreter.json
+  /usr/lib/incubator-zeppelin/bin/zeppelin-daemon.sh start
 fi
 
 set +x +e

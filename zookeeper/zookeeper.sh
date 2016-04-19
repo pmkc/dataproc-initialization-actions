@@ -16,7 +16,7 @@ set -x -e
 
 # Variables for this script
 ZOOKEEPER_VERSION="3.4.6"
-ROLE=$(/usr/share/google/get_metadata_value attributes/role)
+ROLE=$(/usr/share/google/get_metadata_value attributes/dataproc-role)
 CLUSTER_NAME=$(hostname | sed -r 's/(.*)-[w|m](-[0-9]+)?$/\1/')
 
 # Download and extract ZooKeeper
@@ -39,9 +39,9 @@ dataDir=/var/lib/zookeeper
 clientPort=2181
 initLimit=5
 syncLimit=2
-server.1=${CLUSTER_NAME}-m.c.hadoop-cloud-dev.google.com.internal:2888:3888
-server.2=${CLUSTER_NAME}-w-0.c.hadoop-cloud-dev.google.com.internal:2888:3888
-server.3=${CLUSTER_NAME}-w-1.c.hadoop-cloud-dev.google.com.internal:2888:3888
+server.1=${CLUSTER_NAME}-m:2888:3888
+server.2=${CLUSTER_NAME}-w-0:2888:3888
+server.3=${CLUSTER_NAME}-w-1:2888:3888
 EOF
 
 # Start ZooKeeper
