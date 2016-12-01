@@ -19,7 +19,7 @@ PY4J_ZIP=$(echo ${PY4J_ZIP} | cut -d ' ' -f 1)
 echo "Found PY4J_ZIP: '${PY4J_ZIP}'" >&2
 
 if (( "${SPARK_MAJOR_VERSION}" >= 2 )); then
-  PACKAGES_ARG=''
+  PACKAGES_ARG='--packages graphframes:graphframes:0.2.0-spark2.0-s_2.11'
 else
   PACKAGES_ARG='--packages com.databricks:spark-csv_2.10:1.3.0'
 fi
