@@ -71,6 +71,11 @@ RUN apt-key add /tmp/vm_trusted.gpg
 RUN apt-get update
 RUN apt-get install -y hive spark-python openjdk-8-jre-headless
 
+# Don't set this system-wide, because it would break Python 2
+RUN sed -i \
+  '2i \ "env": {"PYSPARK_PYTHON": "/opt/conda/bin/python"},' \
+  /usr/local/share/jupyter/kernels/python3/kernel.json
+
 ENV SPARK_HOME='/usr/lib/spark'
 ENV JAVA_HOME='${JAVA_HOME}'
 ENV PYTHONPATH='${PYTHONPATH}'

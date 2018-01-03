@@ -26,3 +26,15 @@ You can find more information about using initialization actions with Dataproc i
 * If you [build your own Datalab images](https://github.com/googledatalab/datalab/wiki/Development-Environment), you can specify `--metadata=docker-image=gcr.io/<PROJECT>/<IMAGE>` to point to your image.
 * If you normally only run Datalab kernels on VMs and connect to them with a local Docker frontend, set the flag `--metadata=docker-image=gcr.io/cloud-datalab/datalab-gateway` and then set `GATEWAY_VM` to your cluster's master node in your local `docker`command [as described here](https://cloud.google.com/datalab/docs/quickstarts/quickstart-gce#install_the_datalab_docker_container_on_your_computer).
 * You can pass Spark packages as a comma separated list with `--metadata spark-packages=<PACKAGES>` e.g. `--metadata '^#^spark-packages=com.databricks:spark-avro_2.11:3.2.0,graphframes:graphframes:0.3.0-spark2.0-s_2.11`.
+* To use Datalab's Python 3 Kernel run the [Conda init action](/conda) as well:
+
+    ```bash
+    # MINICONDA_VERSION 4.2.12 has Python 3.5.2, which is consistent with i
+    # Datalab as of 2018-01-01
+    gcloud dataproc clusters create <CLUSTER_NAME> \
+        --initialization-actions=gs://dataproc-initialization-actions/conda/bootstrap-conda.sh,\
+gs://dataproc-initialization-actions/conda/install-conda-env.sh,\
+gs://dataproc-initialization-actions/datalab/datalab.sh \
+        --metadata  MINICONDA_VERSION='4.2.12' \
+        --scopes cloud-platform
+    ```
